@@ -124,11 +124,11 @@ def load_dataset(path, sampling_rate, release=False):
 
 def load_dataset_acs(path, sampling_rate, release=False):
     # load and convert annotation data
-    Y = pd.read_csv(os.path.join(path, 'acs_database.csv'), index_col='ecg_id')
+    Y = pd.read_csv(os.path.join(path, 'acs_database.csv'))
     Y.scp_codes = Y.scp_codes.apply(lambda x: ast.literal_eval(x))
 
     # Load raw signal data
-    X = load_raw_data_acs(Y, sampling_rate, path)
+    X, Y = load_raw_data_acs(Y, sampling_rate, path)
 
     return X, Y
 
@@ -137,23 +137,33 @@ def load_raw_data_acs(df, sampling_rate, path):
     channel_stoi_default = {ch.lower(): i for i, ch in enumerate(sig_name)} # 'i':0, 'ii':1, ... 'v6':11
     if os.path.exists(path + f'raw{sampling_rate}.npy'):
         data = np.load(path + f'raw{sampling_rate}.npy', allow_pickle=True)
+        df = pd.read_csv(path+'acs_database_10s.csv')
+        df.scp_codes = df.scp_codes.apply(lambda x: ast.literal_eval(x))
     else:
         data = []
+        new_df = []
         for index, row in tqdm(df.iterrows()):
-            filename = str(index)
-            sigbufs, header = wfdb.rdsamp(str(path/'records'/filename))
+            filename = str(row['ecg_id'])
+            sigbufs, header = wfdb.rdsamp(os.path.join(path, 'records/')+filename)
             if(np.any(np.isnan(sigbufs))):
                 print("Warning:",str(filename),"is corrupt. Skipping.")
                 continue
             # line_data是一个二维的numpy数组，里面存放了心电图信号，维度是(time_step, channel)
             assert(sampling_rate<=header['fs'])
             line_data = resample_data(sigbufs=sigbufs,channel_stoi=channel_stoi_default,channel_labels=header['sig_name'],fs=header['fs'],target_fs=sampling_rate,channels=12,skimage_transform=True)
-            data.append(line_data)
-
+            # 大于10s的数据，将其切块，每个块长度为10s
+            while len(line_data) >= 10*sampling_rate:
+                data.append(line_data[:10*sampling_rate])
+                line_data = line_data[10*sampling_rate:]
+                new_df.append(row)
+        
+        df = pd.DataFrame(new_df).reset_index(drop=True)
         data = np.array(data)
-        pickle.dump(data, open(path+f'raw{sampling_rate}.npy', 'wb'), protocol=4)
 
-    return data
+        pickle.dump(data, open(path+f'raw{sampling_rate}.npy', 'wb'), protocol=4)
+        df.to_csv(path+'acs_database_10s.csv', index=False)
+
+    return data, df
 
 def load_raw_data_icbeb(df, sampling_rate, path):
 
@@ -324,8 +334,15 @@ def select_data(XX,YY, ctype, min_samples):
         # select
         X = XX[YY.all_scp_len > 0]
         Y = YY[YY.all_scp_len > 0]
-        mlb.fit(Y.all_scp.values)
-        y = mlb.transform(Y.all_scp.values)
+        # if np.unique(Y.all_scp.values).shape[0] > 2:
+        #     mlb.fit(Y.all_scp.values)
+        #     y = mlb.transform(Y.all_scp.values)
+        # else:
+        y = np.zeros((Y.shape[0], 2))
+        maping = {"NORM":0, "AMI":1}
+        for i, row in Y.iterrows():
+            y[i, maping[row.all_scp[0]]] = 1
+        
     else:
         pass
 

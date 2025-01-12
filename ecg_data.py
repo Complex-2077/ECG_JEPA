@@ -406,7 +406,7 @@ def waves_from_config(config, reduced_lead=True):
         waves_train, waves_test, labels_train, labels_test = waves_cpsc(data_dir, task, reduced_lead=reduced_lead)
     
     elif dataset == 'acs':
-        waves_train, waves_test, labels_train, labels_test = waves_acs(data_dir, reduced_lead=reduced_lead)
+        waves_train, waves_test, labels_train, labels_test = waves_acs(data_dir, task, reduced_lead=reduced_lead)
 
     # # st_mem needs shorter waves 
     # if model_name == 'st_mem':

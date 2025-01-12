@@ -188,7 +188,7 @@ def train_multiclass(num_epochs, model, criterion, optimizer, train_loader_linea
         all_probs = softmax(all_outputs, axis=1)
 
         # Compute ROC AUC score
-        avg_auc = roc_auc_score(all_labels, all_probs, average='macro', multi_class='ovo')
+        avg_auc = roc_auc_score(all_labels, all_probs[:,1], average='macro')
         if avg_auc > max_auc:
             max_auc = avg_auc
 
