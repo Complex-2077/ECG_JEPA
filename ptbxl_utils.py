@@ -10,6 +10,9 @@ import ast
 from sklearn.metrics import roc_auc_score, roc_curve, roc_curve
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
+from skimage import transform
+from scipy.ndimage import zoom
+
 import warnings
 
 # EVALUATION STUFF
@@ -119,6 +122,38 @@ def load_dataset(path, sampling_rate, release=False):
 
     return X, Y
 
+def load_dataset_acs(path, sampling_rate, release=False):
+    # load and convert annotation data
+    Y = pd.read_csv(os.path.join(path, 'acs_database.csv'), index_col='ecg_id')
+    Y.scp_codes = Y.scp_codes.apply(lambda x: ast.literal_eval(x))
+
+    # Load raw signal data
+    X = load_raw_data_acs(Y, sampling_rate, path)
+
+    return X, Y
+
+def load_raw_data_acs(df, sampling_rate, path):
+    sig_name = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+    channel_stoi_default = {ch.lower(): i for i, ch in enumerate(sig_name)} # 'i':0, 'ii':1, ... 'v6':11
+    if os.path.exists(path + f'raw{sampling_rate}.npy'):
+        data = np.load(path + f'raw{sampling_rate}.npy', allow_pickle=True)
+    else:
+        data = []
+        for index, row in tqdm(df.iterrows()):
+            filename = row['ecg_id']
+            sigbufs, header = wfdb.rdsamp(str(path/'records'/filename))
+            if(np.any(np.isnan(sigbufs))):
+                print("Warning:",str(filename),"is corrupt. Skipping.")
+                continue
+            # line_data是一个二维的numpy数组，里面存放了心电图信号，维度是(time_step, channel)
+            assert(sampling_rate<=header['fs'])
+            line_data = resample_data(sigbufs=sigbufs,channel_stoi=channel_stoi_default,channel_labels=header['sig_name'],fs=header['fs'],target_fs=sampling_rate,channels=12,skimage_transform=True)
+            data.append(line_data)
+
+        data = np.array(data)
+        pickle.dump(data, open(path+f'raw{sampling_rate}.npy', 'wb'), protocol=4)
+
+    return data
 
 def load_raw_data_icbeb(df, sampling_rate, path):
 
@@ -423,3 +458,24 @@ def ICBEBE_table(selection=None, folder='../output/'):
     for i, row in enumerate(df_rest[cols].values):
         md_source += '| ' + df_rest.index[i].replace('fastai_', '') + ' | ' + row[0] + ' | ' + row[1] + ' | ' + row[2] + ' | [our work]('+our_work+') | [this repo]('+our_repo+')| \n'
     print(md_source)
+
+def resample_data(sigbufs, channel_labels, fs, target_fs, channels=8, channel_stoi=None,skimage_transform=True,interpolation_order=3):
+    channel_labels = [c.lower() for c in channel_labels]
+    #https://github.com/scipy/scipy/issues/7324 zoom issues
+    factor = target_fs/fs
+    timesteps_new = int(len(sigbufs)*factor)
+    if(channel_stoi is not None):
+        data = np.zeros((timesteps_new, channels), dtype=np.float32)
+        for i,cl in enumerate(channel_labels):
+            if(cl in channel_stoi.keys() and channel_stoi[cl]<channels):
+                if(skimage_transform):
+                    data[:,channel_stoi[cl]]=transform.resize(sigbufs[:,i],(timesteps_new,),order=interpolation_order).astype(np.float32)
+                else:
+                    data[:,channel_stoi[cl]]=zoom(sigbufs[:,i],timesteps_new/len(sigbufs),order=interpolation_order).astype(np.float32)
+    else:
+        if(skimage_transform):
+            data=transform.resize(sigbufs,(timesteps_new,channels),order=interpolation_order).astype(np.float32)
+        else:
+            data=zoom(sigbufs,(timesteps_new/len(sigbufs),1),order=interpolation_order).astype(np.float32)
+    
+    return data

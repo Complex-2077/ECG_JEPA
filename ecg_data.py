@@ -272,6 +272,42 @@ def waves_ptbxl(data_dir, task='multilabel', reduced_lead=True, downsample=True)
 
     return waves_train, waves_test, labels_train, labels_test
 
+def waves_acs(data_dir, task='multilabel', reduced_lead=True, resample_data=True):
+    from ptbxl_utils import load_dataset_acs, compute_label_aggregations, select_data
+    assert task in ['multilabel', 'multiclass']
+
+    cat = 'all'
+    categories = ['all', 'diagnostic', 'subdiagnostic', 'superdiagnostic', 'form', 'rhythm']
+    assert cat in categories, f'Invalid category: {cat}, choose from {categories}'
+
+    sampling_frequency=250  # 指定频率为250 Hz
+
+    # Load ACS data
+    data, raw_labels = load_dataset_acs(data_dir, sampling_frequency)       # 注意这个函数里面已经做了resample，返回信号的频率就是sampling_frequency
+    
+    data = data.transpose(0,2,1)    # 转置，变成(n_samples, n_channels, n_timesteps)
+    
+    if reduced_lead:
+        data = np.concatenate([data[:,:2], data[:,6:]], axis=1)
+
+    # Preprocess label data
+    labels = compute_label_aggregations(raw_labels, data_dir, cat)
+    # Select relevant data and convert to one-hot
+    data_, labels, Y, _ = select_data(data, labels, cat, min_samples=0)
+
+    # 1-9 for training 
+    waves_train = data_[labels.strat_fold < 10]
+    labels_train = Y[labels.strat_fold < 10]
+
+    # 10 for validation
+    waves_test = data_[labels.strat_fold == 10]
+    labels_test = Y[labels.strat_fold == 10]
+
+    if task == 'multiclass':
+        waves_train, labels_train = convert_to_multiclass(waves_train, labels_train)
+        waves_test, labels_test = convert_to_multiclass(waves_test, labels_test)
+
+    return waves_train, waves_test, labels_train, labels_test
 
 def waves_cpsc(data_dir, task='multilabel', reduced_lead=True, downsample=True):
     waves_cpsc = []
@@ -368,6 +404,9 @@ def waves_from_config(config, reduced_lead=True):
 
     elif dataset == 'cpsc':
         waves_train, waves_test, labels_train, labels_test = waves_cpsc(data_dir, task, reduced_lead=reduced_lead)
+    
+    elif dataset == 'acs':
+        waves_train, waves_test, labels_train, labels_test = waves_acs(data_dir, reduced_lead=reduced_lead)
 
     # # st_mem needs shorter waves 
     # if model_name == 'st_mem':
