@@ -12,3 +12,6 @@ cpc/__pycache__/basic_conv1d.cpython-39.pyc
 cpc/__pycache__/cpc.cpython-39.pyc
 st_mem.py
 .DS_Store
+*/__pycache__/*
+*/output/*
+*/weights/*
