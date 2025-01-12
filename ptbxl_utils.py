@@ -140,7 +140,7 @@ def load_raw_data_acs(df, sampling_rate, path):
     else:
         data = []
         for index, row in tqdm(df.iterrows()):
-            filename = row['ecg_id']
+            filename = str(index)
             sigbufs, header = wfdb.rdsamp(str(path/'records'/filename))
             if(np.any(np.isnan(sigbufs))):
                 print("Warning:",str(filename),"is corrupt. Skipping.")
