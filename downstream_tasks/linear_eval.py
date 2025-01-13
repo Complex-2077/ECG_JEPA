@@ -147,7 +147,7 @@ def main(config):
         num_epochs = config['train']['epochs']
         lr = config['train']['lr']
 
-        criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss(weight=torch.tensor([9.107527, 0.109799]).to(device))
+        criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss(weight=torch.tensor([0.109799, 9.107527]).to(device))
         linear_model = LinearClassifier(embed_dim, n_labels).to(device)
         optimizer = optim.AdamW(linear_model.parameters(), lr=lr)
         iterations_per_epoch = len(train_loader_linear)

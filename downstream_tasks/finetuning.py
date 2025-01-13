@@ -173,7 +173,7 @@ def main(config):
                                 weight_decay=config['train']['weight_decay'])
 
     loss_scaler = NativeScaler()
-    criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss(weight=torch.tensor([0.109799, 9.107527]).to(device))
     output_act = nn.Sigmoid() if config['task'] == 'multilabel' else nn.Softmax(dim=-1)
     best_loss = float('inf')
 
