@@ -3,12 +3,12 @@ dataloader:
   num_workers: 8
 
 train:
-  epochs: 100
+  epochs: 500
   accum_iter: 1
   warmup_epochs: 3
   min_lr: 0
   blr: null
-  lr: 0.00001
+  lr: 0.01
   weight_decay: 0.005
   dist_eval: false
   max_norm: null
@@ -29,8 +29,6 @@ metric:
   - Recall:
       average: macro
   - Specificity:
-      average: macro
-  - NegativePredictiveValue:
       average: macro
 
 test:

@@ -1,3 +1,4 @@
+from sklearn.utils import compute_class_weight
 import yaml
 import argparse
 import numpy as np
@@ -173,7 +174,12 @@ def main(config):
                                 weight_decay=config['train']['weight_decay'])
 
     loss_scaler = NativeScaler()
-    criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss(weight=torch.tensor([0.109799, 9.107527]).to(device))
+    # compute class weights
+    class_weights = compute_class_weight('balanced', classes=np.unique(labels_train), y=labels_train)
+    class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
+    # 打印class_weights
+    print(f"class_weights: {class_weights}")
+    criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss(weight=class_weights)
     output_act = nn.Sigmoid() if config['task'] == 'multilabel' else nn.Softmax(dim=-1)
     best_loss = float('inf')
 

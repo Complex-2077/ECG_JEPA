@@ -30,8 +30,6 @@ metric:
       average: macro
   - Specificity:
       average: macro
-  - NegativePredictiveValue:
-      average: macro
 
 test:
   target_metric: loss
