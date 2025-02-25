@@ -69,6 +69,11 @@ def parse():
                         type=float,
                         help='data percentage (from 0 to 1) to use in few-shot learning')
     
+    parser.add_argument('--use_class_weight',
+                        default=False,
+                        action='store_true',
+                        help='use class weight in loss function')
+
 
 
     # Use parse_known_args instead of parse_args
@@ -84,6 +89,17 @@ def parse():
             config[k] = v
 
     return config
+
+def compute_matrix(TP, FP, TN, FN):
+    Acc = (TP + TN) / (TP + FP + TN + FN)
+    Sens = TP / (TP + FN)
+    Spec = TN / (TN + FP)
+    PPV = (TP / (TP + FP) ) if (TP + FP) != 0 else 0
+    NPV = TN / (TN + FN)
+    F1 = 2 * TP / (2 * TP + FP + FN)
+
+    print(f'Acc: {Acc:.3f}, Sens: {Sens:.3f}, Spec: {Spec:.3f}, PPV: {PPV:.3f}, NPV: {NPV:.3f}, F1: {F1:.3f}')
+    logging.info(f'Acc: {Acc:.3f}, Sens: {Sens:.3f}, Spec: {Spec:.3f}, PPV: {PPV:.3f}, NPV: {NPV:.3f}, F1: {F1:.3f}')
 
 def main(config):
 
@@ -174,12 +190,22 @@ def main(config):
                                 weight_decay=config['train']['weight_decay'])
 
     loss_scaler = NativeScaler()
-    # compute class weights
-    class_weights = compute_class_weight('balanced', classes=np.unique(labels_train), y=labels_train)
-    class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
-    # 打印class_weights
-    print(f"class_weights: {class_weights}")
-    criterion = nn.BCEWithLogitsLoss() if config['task'] == 'multilabel' else nn.CrossEntropyLoss(weight=class_weights)
+
+    if config.get('use_class_weight', False):
+        # compute class weights
+        class_weights = compute_class_weight('balanced', classes=np.unique(labels_train), y=labels_train)
+        class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
+        # 打印class_weights
+        print(f"class_weights: {class_weights}")
+    
+    if config['task'] == 'multilabel':
+        criterion = nn.BCEWithLogitsLoss() 
+    else:
+        if config.get('use_class_weight', False):
+            criterion = nn.CrossEntropyLoss(weight=class_weights)
+        else:
+            criterion = nn.CrossEntropyLoss()
+
     output_act = nn.Sigmoid() if config['task'] == 'multilabel' else nn.Softmax(dim=-1)
     best_loss = float('inf')
 
@@ -235,8 +261,14 @@ def main(config):
                 best_metrics[metric_name] = curr_metric
             logging.info(f"Best {metric_name}: {best_metrics[metric_name]:.3f}")
             print(f"Best {metric_name}: {best_metrics[metric_name]:.3f}")
-
-        print('========================================================================================')
+            if metric_name == 'MulticlassConfusionMatrix':
+                print(f'{metric_name}: TP-{metrics["TP"]}, FP-{metrics["FP"]}, TN-{metrics["TN"]}, FN-{metrics["FN"]}')
+                logging.info(f'{metric_name}: TP-{metrics["TP"]}, FP-{metrics["FP"]}, TN-{metrics["TN"]}, FN-{metrics["FN"]}')
+        
+        if metrics.get("TP", None) is not None:
+            print('==================Compute Matrix again(using confusion matrix this time)==================')
+            compute_matrix(metrics["TP"], metrics["FP"], metrics["TN"], metrics["FN"])
+            print('========================================================================================')
 
 
 if __name__ == '__main__':

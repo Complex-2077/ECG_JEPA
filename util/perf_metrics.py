@@ -33,7 +33,7 @@ def build_metric_fn(config: dict) -> Tuple[torchmetrics.Metric, Dict[str, float]
         assert hasattr(torchmetrics, metric_class_name), f"Invalid metric name: {metric_class_name}"
         metric_class = getattr(torchmetrics, metric_class_name)
         metric_fn = metric_class(**metric_fn_kwargs)
-        if  metric_class_name == "Specificity" and not hasattr(metric_fn, "higher_is_better"):
+        if  "Specificity" in metric_class_name and not hasattr(metric_fn, "higher_is_better"):
             # 手动定义 high_is_better
             metric_fn.higher_is_better = True
         metric_list.append(metric_fn)

@@ -24,12 +24,6 @@ metric:
       average: macro
   - AUROC:
       average: macro
-  - Precision:
-      average: macro
-  - Recall:
-      average: macro
-  - Specificity:
-      average: macro
 
 test:
   target_metric: loss

@@ -142,12 +142,31 @@ def evaluate(model: torch.nn.Module,
     valid_stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
     metrics = metric_fn.compute()
+    TP = None
+    FP = None
+    TN = None
+    FN = None
     if isinstance(metrics, dict):  # MetricCollection
-        metrics = {k: v.item() for k, v in metrics.items()}
+        for k, v in metrics.items():
+            try:
+                metrics[k] = v.item()
+            except ValueError:
+                TN=v[0,0].item()
+                FP=v[0,1].item()
+                FN=v[1,0].item()
+                TP=v[1,1].item()
+                metrics[k]=0
     else:
         metrics = {metric_fn.__class__.__name__: metrics.item()}
-    metric_str = "  ".join([f"{k}: {v:.3f}" for k, v in metrics.items()])
-    metric_str = f"{metric_str} loss: {metric_logger.loss.global_avg:.3f}"
+
+    if TP is not None:
+        metrics['TP']=TP
+        metrics['FP']=FP
+        metrics['TN']=TN
+        metrics['FN']=FN
+    
+    # metric_str = "  ".join([f"{k}: {v:.3f}" for k, v in metrics.items()])
+    # metric_str = f"{metric_str} loss: {metric_logger.loss.global_avg:.3f}"
     # print(f"* {metric_str}")
     metric_fn.reset()
 
