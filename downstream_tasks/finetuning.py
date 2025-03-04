@@ -268,7 +268,7 @@ def main(config):
         if metrics.get("TP", None) is not None:
             print('==================Compute Matrix again(using confusion matrix this time)==================')
             compute_matrix(metrics["TP"], metrics["FP"], metrics["TN"], metrics["FN"])
-            print('========================================================================================')
+        print('========================================================================================')
 
 
 if __name__ == '__main__':

@@ -151,10 +151,12 @@ def evaluate(model: torch.nn.Module,
             try:
                 metrics[k] = v.item()
             except ValueError:
-                TN=v[0,0].item()
-                FP=v[0,1].item()
-                FN=v[1,0].item()
-                TP=v[1,1].item()
+                if k == 'MultiClassConfusionMatrix' and v.shape[0] == 2:
+                    TN=v[0,0].item()
+                    FP=v[0,1].item()
+                    FN=v[1,0].item()
+                    TP=v[1,1].item()
+                print(f'Confusion matrix: {v}')
                 metrics[k]=0
     else:
         metrics = {metric_fn.__class__.__name__: metrics.item()}
@@ -164,7 +166,7 @@ def evaluate(model: torch.nn.Module,
         metrics['FP']=FP
         metrics['TN']=TN
         metrics['FN']=FN
-    
+        
     # metric_str = "  ".join([f"{k}: {v:.3f}" for k, v in metrics.items()])
     # metric_str = f"{metric_str} loss: {metric_logger.loss.global_avg:.3f}"
     # print(f"* {metric_str}")

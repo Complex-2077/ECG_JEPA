@@ -24,6 +24,14 @@ metric:
       average: macro
   - AUROC:
       average: macro
+  - Specificity:
+      average: macro
+  - Recall:
+      average: macro
+  - Precision:
+      average: macro
+  - ConfusionMatrix
+  
 
 test:
   target_metric: loss

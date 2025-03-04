@@ -334,15 +334,14 @@ def select_data(XX,YY, ctype, min_samples):
         # select
         X = XX[YY.all_scp_len > 0]
         Y = YY[YY.all_scp_len > 0]
-        # if np.unique(Y.all_scp.values).shape[0] > 2:
-        #     mlb.fit(Y.all_scp.values)
-        #     y = mlb.transform(Y.all_scp.values)
-        # else:
-        y = np.zeros((Y.shape[0], 2))
-        maping = {"NORM":0, "AMI":1}
-        for i, row in Y.iterrows():
-            y[i, maping[row.all_scp[0]]] = 1
-        
+        if np.unique(Y.all_scp.values).shape[0] > 2:
+            mlb.fit(Y.all_scp.values)
+            y = mlb.transform(Y.all_scp.values)
+        else:
+            y = np.zeros((Y.shape[0], 2))
+            maping = {"NORM":0, "AMI":1}
+            for i, row in Y.iterrows():
+                y[i, maping[row.all_scp[0]]] = 1
     else:
         pass
 
